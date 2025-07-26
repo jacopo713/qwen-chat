@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { ChatSession } from '@/types/chat'
 
 interface ChatSidebarProps {
@@ -16,7 +16,15 @@ export default function ChatSidebar({
   onSelectSession, 
   onNewChat 
 }: ChatSidebarProps) {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
   const formatDate = (date: Date) => {
+    if (!isMounted) return '00:00' // Placeholder during hydration
+    
     const now = new Date()
     const diffInHours = Math.abs(now.getTime() - date.getTime()) / (1000 * 60 * 60)
     
