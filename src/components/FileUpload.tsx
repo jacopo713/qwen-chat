@@ -136,86 +136,81 @@ export default function FileUpload({
         `}
       >
         {uploadStatus.isUploading ? (
-          <div className="space-y-3">
-            <div className="text-3xl">⬆️</div>
-            <div className="text-sm font-medium text-gray-700">
-              Caricamento in corso...
+          <div className="space-y-4 w-full">
+            {/* Upload progress */}
+            <div className="flex flex-col items-center space-y-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent"></div>
+              <div className="text-sm text-gray-600">
+                Uploading... {Math.round(uploadStatus.progress)}%
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadStatus.progress}%` }}
+                ></div>
+              </div>
             </div>
-            <div className="text-xs text-gray-500">
-              {Math.round(uploadStatus.progress)}%
-            </div>
-            <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-blue-500 transition-all duration-300 rounded-full"
-                style={{ width: `${uploadStatus.progress}%` }}
-              />
-            </div>
+
+            {/* File previews during upload */}
+            {previews.length > 0 && (
+              <div className="space-y-2 max-h-32 overflow-y-auto">
+                {previews.map((preview) => (
+                  <div key={preview.id} className="flex items-center space-x-3 p-2 bg-white rounded-lg shadow-sm">
+                    {preview.preview ? (
+                      <img 
+                        src={preview.preview} 
+                        alt={preview.file.name}
+                        className="w-12 h-12 object-cover rounded-lg"
+                      />
+                    ) : (
+                      <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-lg">
+                        <span className="text-xl">{getFileIcon(preview.file.type)}</span>
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 truncate">
+                        {preview.file.name}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {(preview.file.size / 1024 / 1024).toFixed(2)} MB
+                      </div>
+                    </div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="text-4xl">📁</div>
+            {/* Upload icon */}
+            <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+            </div>
+
+            {/* Instructions */}
             <div className="space-y-1">
-              <div className="text-sm font-medium text-gray-700">
-                Clicca per selezionare o trascina qui i file
+              <div className="text-sm font-medium text-gray-900">
+                Click to upload or drag and drop
               </div>
               <div className="text-xs text-gray-500">
-                Massimo 10MB • Immagini, PDF, Documenti, Testo
+                PNG, JPG, PDF, DOC up to 10MB
               </div>
             </div>
-            
-            {/* Quick upload buttons */}
-            <div className="flex space-x-2 mt-4">
-              <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs">
-                📷 Immagini
-              </div>
-              <div className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs">
-                📄 PDF
-              </div>
-              <div className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs">
-                📝 Documenti
-              </div>
+
+            {/* File types */}
+            <div className="flex flex-wrap justify-center gap-1 text-xs text-gray-400">
+              <span>🖼️ Images</span>
+              <span>•</span>
+              <span>📄 Documents</span>
+              <span>•</span>
+              <span>📊 Spreadsheets</span>
             </div>
           </div>
         )}
       </div>
-
-      {/* Preview area */}
-      {previews.length > 0 && (
-        <div className="mt-4 space-y-3">
-          <div className="text-sm font-medium text-gray-700 flex items-center">
-            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-            </svg>
-            File in preparazione:
-          </div>
-          <div className="grid grid-cols-1 gap-3">
-            {previews.map((preview) => (
-              <div key={preview.id} className="flex items-center space-x-3 p-3 bg-white border border-gray-200 rounded-lg shadow-sm">
-                {preview.preview ? (
-                  <img 
-                    src={preview.preview} 
-                    alt={preview.file.name}
-                    className="w-12 h-12 object-cover rounded-lg"
-                  />
-                ) : (
-                  <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-lg">
-                    <span className="text-xl">{getFileIcon(preview.file.type)}</span>
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">
-                    {preview.file.name}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {(preview.file.size / 1024 / 1024).toFixed(2)} MB
-                  </div>
-                </div>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Error display */}
       {uploadStatus.error && (

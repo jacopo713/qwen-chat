@@ -10,17 +10,8 @@ import {
   Timestamp 
 } from 'firebase/firestore'
 import { auth, db } from '@/lib/firebase'
-import { FileMetadata, FileMessage } from '@/types/file'
-
-export interface TextMessage {
-  id: string
-  type: 'text'
-  content: string
-  timestamp: Date
-  userId: string
-}
-
-export type ChatMessage = TextMessage | FileMessage
+import { FileMetadata } from '@/types/file'
+import { ChatMessage, TextMessage, FileMessage } from '@/types/chat'
 
 interface UseChatReturn {
   messages: ChatMessage[]
@@ -28,6 +19,7 @@ interface UseChatReturn {
   sendFileMessage: (file: FileMetadata, content?: string) => Promise<void>
   loading: boolean
   error: string | null
+  clearError: () => void
 }
 
 export const useChat = (chatId: string = 'general'): UseChatReturn => {
@@ -35,6 +27,11 @@ export const useChat = (chatId: string = 'general'): UseChatReturn => {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Clear error function
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
 
   // Listen to messages
   useEffect(() => {
@@ -56,11 +53,26 @@ export const useChat = (chatId: string = 'general'): UseChatReturn => {
             ? data.timestamp.toDate() 
             : new Date()
 
-          return {
+          const baseMessage = {
             id: doc.id,
-            ...data,
-            timestamp
-          } as ChatMessage
+            content: data.content || '',
+            timestamp,
+            userId: data.userId
+          }
+
+          // Handle different message types
+          if (data.type === 'file' && data.file) {
+            return {
+              ...baseMessage,
+              type: 'file',
+              file: data.file
+            } as FileMessage
+          } else {
+            return {
+              ...baseMessage,
+              type: 'text'
+            } as TextMessage
+          }
         })
 
         setMessages(newMessages)
@@ -78,7 +90,9 @@ export const useChat = (chatId: string = 'general'): UseChatReturn => {
   }, [user, chatId])
 
   const sendTextMessage = useCallback(async (content: string): Promise<void> => {
-    if (!user || !content.trim()) return
+    if (!user || !content.trim()) {
+      throw new Error('User not authenticated or content is empty')
+    }
 
     try {
       const messagesRef = collection(db, `chats/${chatId}/messages`)
@@ -88,40 +102,59 @@ export const useChat = (chatId: string = 'general'): UseChatReturn => {
         userId: user.uid,
         timestamp: serverTimestamp()
       })
+      
+      clearError()
     } catch (error) {
       console.error('Error sending message:', error)
-      setError('Failed to send message')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send message'
+      setError(errorMessage)
       throw error
     }
-  }, [user, chatId])
+  }, [user, chatId, clearError])
 
   const sendFileMessage = useCallback(async (
     file: FileMetadata, 
     content: string = ''
   ): Promise<void> => {
-    if (!user) return
+    if (!user) {
+      throw new Error('User not authenticated')
+    }
 
     try {
       const messagesRef = collection(db, `chats/${chatId}/messages`)
       await addDoc(messagesRef, {
         type: 'file',
-        content,
-        file,
+        content: content.trim(),
+        file: {
+          id: file.id,
+          name: file.name,
+          originalName: file.originalName,
+          type: file.type,
+          size: file.size,
+          url: file.url,
+          uploadedAt: file.uploadedAt,
+          uploadedBy: file.uploadedBy,
+          storagePath: file.storagePath
+        },
         userId: user.uid,
         timestamp: serverTimestamp()
       })
+      
+      clearError()
     } catch (error) {
       console.error('Error sending file message:', error)
-      setError('Failed to send file')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send file'
+      setError(errorMessage)
       throw error
     }
-  }, [user, chatId])
+  }, [user, chatId, clearError])
 
   return {
     messages,
     sendTextMessage,
     sendFileMessage,
     loading,
-    error
+    error,
+    clearError
   }
 }

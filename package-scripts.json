@@ -1,0 +1,12 @@
+{
+  "scripts": {
+    "firebase:emulators": "firebase emulators:start",
+    "firebase:deploy:hosting": "firebase deploy --only hosting",
+    "firebase:deploy:functions": "firebase deploy --only functions",
+    "env:check": "npm run dev | grep -E '(Firebase|Environment)'",
+    "test:file-upload": "jest src/__tests__/file-upload.test.ts",
+    "test:firebase": "jest src/__tests__/firebase.test.ts",
+    "firebase:console": "echo 'Opening Firebase Console...' && open https://console.firebase.google.com",
+    "build:check": "npm run build && npm run env:check"
+  }
+}
