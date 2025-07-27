@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { ChatSession } from '@/types/chat'
+import { useAuth } from '@/context/AuthContext'
 
 interface ChatSidebarProps {
   sessions: ChatSession[]
@@ -17,6 +18,7 @@ export default function ChatSidebar({
   onNewChat 
 }: ChatSidebarProps) {
   const [isMounted, setIsMounted] = useState(false)
+  const { user, logout } = useAuth()
 
   useEffect(() => {
     setIsMounted(true)
@@ -43,6 +45,24 @@ export default function ChatSidebar({
     
     const preview = lastMessage.content.slice(0, 60)
     return preview.length < lastMessage.content.length ? `${preview}...` : preview
+  }
+
+  const getUserDisplayName = () => {
+    if (!user?.email) return 'User'
+    return user.email.split('@')[0]
+  }
+
+  const getUserInitial = () => {
+    if (!user?.email) return 'U'
+    return user.email[0].toUpperCase()
+  }
+
+  const handleLogout = async () => {
+    try {
+      await logout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
   }
 
   return (
@@ -145,34 +165,46 @@ export default function ChatSidebar({
         )}
       </div>
 
-      {/* User Profile Section */}
+      {/* User Profile Section - Now shows real user data */}
       <div className="p-4 border-t border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-            U
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              User
-            </p>
-            <p className="text-xs text-gray-500 truncate">
-              user@example.com
-            </p>
-          </div>
-          <button className="text-gray-400 hover:text-gray-600">
-            <svg 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2"
+        {user ? (
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+              {getUserInitial()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {getUserDisplayName()}
+              </p>
+              <p className="text-xs text-gray-500 truncate">
+                {user.email}
+              </p>
+            </div>
+            <button 
+              onClick={handleLogout}
+              className="text-gray-400 hover:text-red-600 transition-colors"
+              title="Sign out"
             >
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M12 1v6m0 6v6"/>
-            </svg>
-          </button>
-        </div>
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16,17 21,12 16,7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <div className="text-center">
+            <div className="w-8 h-8 bg-gray-300 rounded-full mx-auto mb-2"></div>
+            <p className="text-xs text-gray-500">Not signed in</p>
+          </div>
+        )}
       </div>
     </div>
   )

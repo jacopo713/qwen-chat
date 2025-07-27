@@ -17,6 +17,11 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  showLoginModal: () => void
+  hideLoginModal: () => void
+  isLoginModalOpen: boolean
+  loginModalMode: 'login' | 'register'
+  setLoginModalMode: (mode: 'login' | 'register') => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -36,6 +41,8 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false)
+  const [loginModalMode, setLoginModalMode] = useState<'login' | 'register'>('login')
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -73,12 +80,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
+  const showLoginModal = () => {
+    setIsLoginModalOpen(true)
+  }
+
+  const hideLoginModal = () => {
+    setIsLoginModalOpen(false)
+  }
+
   const value: AuthContextType = {
     user,
     loading,
     signIn,
     signUp,
     logout,
+    showLoginModal,
+    hideLoginModal,
+    isLoginModalOpen,
+    loginModalMode,
+    setLoginModalMode,
   }
 
   return (

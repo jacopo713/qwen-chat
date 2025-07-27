@@ -6,18 +6,24 @@ import { useAuth } from '@/context/AuthContext'
 import AuthModal from '@/components/auth/AuthModal'
 
 export default function Navbar() {
-  const { user, logout } = useAuth()
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login')
+  const { 
+    user, 
+    logout, 
+    showLoginModal, 
+    hideLoginModal, 
+    isLoginModalOpen, 
+    loginModalMode, 
+    setLoginModalMode 
+  } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
 
   const handleAuthClick = (mode: 'login' | 'register') => {
-    setAuthMode(mode)
-    setIsAuthModalOpen(true)
+    setLoginModalMode(mode)
+    showLoginModal()
   }
 
   const handleSwitchMode = () => {
-    setAuthMode(authMode === 'login' ? 'register' : 'login')
+    setLoginModalMode(loginModalMode === 'login' ? 'register' : 'login')
   }
 
   const handleLogout = async () => {
@@ -119,9 +125,9 @@ export default function Navbar() {
 
       {/* Auth Modal */}
       <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        mode={authMode}
+        isOpen={isLoginModalOpen}
+        onClose={hideLoginModal}
+        mode={loginModalMode}
         onSwitchMode={handleSwitchMode}
       />
     </>
