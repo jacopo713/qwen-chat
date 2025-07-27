@@ -3,13 +3,32 @@
 import React from 'react'
 import Link from 'next/link'
 import { useRoadmapData } from '@/hooks/useRoadmapData'
+import { useAuth } from '@/context/AuthContext'
+import Navbar from '@/components/ui/Navbar'
 import RoadmapCard from '@/components/ui/RoadmapCard'
 
 export default function HomePage() {
   const { phases, stats } = useRoadmapData()
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <Navbar />
+        <div className="flex items-center justify-center min-h-[80vh]">
+          <div className="text-center">
+            <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+      <Navbar />
+      
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-12">
         <div className="text-center mb-12">
@@ -21,6 +40,15 @@ export default function HomePage() {
             secure authentication, and seamless file sharing. Built with modern 
             technologies for the best user experience.
           </p>
+          
+          {/* User Status */}
+          {user && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg max-w-md mx-auto">
+              <p className="text-green-800">
+                Welcome back, <span className="font-medium">{user.email}</span>!
+              </p>
+            </div>
+          )}
           
           {/* Project Stats */}
           <div className="flex justify-center items-center gap-8 mb-8">
@@ -156,14 +184,14 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Phase 1 Status */}
+        {/* Authentication Status */}
         <div className="mt-12 text-center">
           <div className="inline-flex items-center gap-2 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-4 py-2 rounded-full">
             <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-            Phase 1 Complete: Chat Frontend Ready
+            Firebase Authentication: Active
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
-            Ready for Qwen API integration in the next phase
+            Secure email/password authentication ready
           </p>
         </div>
       </div>
