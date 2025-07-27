@@ -32,6 +32,9 @@ export function useFirestoreChats(options: UseFirestoreChatsOptions = {}): UseFi
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
+  // Track if we're actively streaming to prevent conflicts
+  const [isStreaming, setIsStreaming] = useState(false)
+  
   // Auto-save timeout ref
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const unsubscribeRef = useRef<(() => void) | null>(null)
@@ -44,9 +47,9 @@ export function useFirestoreChats(options: UseFirestoreChatsOptions = {}): UseFi
     }
   }, [])
 
-  // Schedule auto-save
+  // Schedule auto-save - ONLY if not streaming
   const scheduleAutoSave = useCallback(() => {
-    if (!autoSave || !currentSession || !user) return
+    if (!autoSave || !currentSession || !user || isStreaming) return
 
     clearAutoSaveTimeout()
     autoSaveTimeoutRef.current = setTimeout(async () => {
@@ -57,7 +60,7 @@ export function useFirestoreChats(options: UseFirestoreChatsOptions = {}): UseFi
         // Don't set error state for auto-save failures to avoid UI disruption
       }
     }, autoSaveDelay)
-  }, [autoSave, currentSession, user, autoSaveDelay, clearAutoSaveTimeout])
+  }, [autoSave, currentSession, user, autoSaveDelay, clearAutoSaveTimeout, isStreaming])
 
   // Clear error
   const clearError = useCallback(() => {
@@ -192,7 +195,7 @@ export function useFirestoreChats(options: UseFirestoreChatsOptions = {}): UseFi
     }
   }, [user, currentSession])
 
-  // Add message to current session
+  // Add message to current session - IMMEDIATE UPDATE WITHOUT AUTO-SAVE
   const addMessageToCurrentSession = useCallback(async (message: Message): Promise<void> => {
     if (!currentSession) {
       throw new Error('No current session to add message to')
@@ -207,17 +210,27 @@ export function useFirestoreChats(options: UseFirestoreChatsOptions = {}): UseFi
     // Update local state immediately for better UX
     setCurrentSession(updatedSession)
 
-    // Schedule auto-save if enabled
-    if (autoSave) {
-      scheduleAutoSave()
-    }
-  }, [currentSession, autoSave, scheduleAutoSave])
+    // DON'T auto-save here - let parent manage persistence
+    // This prevents conflicts during streaming
+  }, [currentSession])
 
-  // Subscribe to user's chat sessions when user changes
+  // ENHANCED setCurrentSession with streaming awareness
+  const setCurrentSessionEnhanced = useCallback((session: ChatSession | null) => {
+    setCurrentSession(session)
+    
+    // Mark as streaming if session has loading messages
+    if (session?.messages.some(msg => msg.isLoading)) {
+      setIsStreaming(true)
+    } else {
+      setIsStreaming(false)
+    }
+  }, [])
+
+  // Subscribe to user's chat sessions when user changes - IMPROVED SYNC
   useEffect(() => {
     if (!user) {
+      // DON'T reset currentSession immediately - let context manage it
       setSessions([])
-      setCurrentSession(null)
       return
     }
 
@@ -229,6 +242,19 @@ export function useFirestoreChats(options: UseFirestoreChatsOptions = {}): UseFi
         user.uid,
         (updatedSessions) => {
           setSessions(updatedSessions)
+          
+          // SYNC currentSession with updated sessions ONLY if not streaming
+          if (!isStreaming && currentSession) {
+            const updatedCurrentSession = updatedSessions.find(s => s.id === currentSession.id)
+            if (updatedCurrentSession) {
+              // Only update if there are meaningful changes (not just timestamp)
+              const hasNewMessages = updatedCurrentSession.messages.length !== currentSession.messages.length
+              if (hasNewMessages) {
+                setCurrentSession(updatedCurrentSession)
+              }
+            }
+          }
+          
           setIsLoading(false)
         },
         (error) => {
@@ -244,7 +270,7 @@ export function useFirestoreChats(options: UseFirestoreChatsOptions = {}): UseFi
       setError(errorMessage)
       setIsLoading(false)
     }
-  }, [user])
+  }, [user, isStreaming, currentSession])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -256,10 +282,13 @@ export function useFirestoreChats(options: UseFirestoreChatsOptions = {}): UseFi
     }
   }, [clearAutoSaveTimeout])
 
-  // Auto-save when current session changes
+  // Auto-save when current session changes - IMPROVED CONDITIONS
   useEffect(() => {
-    scheduleAutoSave()
-  }, [scheduleAutoSave])
+    // Only schedule auto-save if not actively streaming
+    if (!isStreaming) {
+      scheduleAutoSave()
+    }
+  }, [scheduleAutoSave, isStreaming])
 
   return {
     sessions,
@@ -272,7 +301,7 @@ export function useFirestoreChats(options: UseFirestoreChatsOptions = {}): UseFi
     deleteSession,
     updateSessionTitle,
     addMessageToCurrentSession,
-    setCurrentSession,
+    setCurrentSession: setCurrentSessionEnhanced,
     clearError
   }
 }

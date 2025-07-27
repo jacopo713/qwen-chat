@@ -3,7 +3,6 @@
 import React, { useEffect, useRef } from 'react'
 import { ChatSession } from '@/types/chat'
 import MessageBubble from './MessageBubble'
-import TypingIndicator from './TypingIndicator'
 
 interface ChatAreaProps {
   session: ChatSession | null
@@ -75,22 +74,22 @@ export default function ChatArea({ session, isLoading = false, error, onClearErr
         </div>
       )}
 
-      {/* Messages Area */}
+      {/* Messages Area - POSITIONED FROM TOP */}
       <div className="flex-1 overflow-y-auto bg-white">
-        <div className="max-w-4xl md:max-w-3xl min-w-[400px] mx-auto p-6">
-          {displayMessages.map((message, index) => (
-            <MessageBubble
-              key={message.id}
-              message={message}
-              isLatest={index === displayMessages.length - 1}
-            />
-          ))}
-          
-          {/* Typing Indicator */}
-          <TypingIndicator isVisible={isLoading} />
-          
-          {/* Auto-scroll anchor */}
-          <div ref={messagesEndRef} />
+        <div className="max-w-4xl md:max-w-3xl min-w-[400px] mx-auto">
+          {/* START FROM TOP - Minimal top padding */}
+          <div className="pt-4 pb-6 px-6">
+            {displayMessages.map((message, index) => (
+              <MessageBubble
+                key={message.id}
+                message={message}
+                isLatest={index === displayMessages.length - 1}
+              />
+            ))}
+            
+            {/* Auto-scroll anchor */}
+            <div ref={messagesEndRef} />
+          </div>
         </div>
       </div>
     </div>

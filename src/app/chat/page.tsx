@@ -61,7 +61,7 @@ export default function ChatPage() {
       <ChatSidebar />
       
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col bg-white">
         {/* Error Banner */}
         {error && (
           <div className="bg-red-50 border-b border-red-200 px-4 py-3">
@@ -95,18 +95,29 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Conditional Layout */}
+        {/* Conditional Layout based on conversation state */}
         {isWelcomeState ? (
-          /* Welcome State: Centered welcome message and input */
-          <div className="flex-1 flex flex-col items-center justify-center px-8 py-16">
+          /* Welcome State: Centered welcome message and input - HORIZONTAL LOGO LAYOUT */
+          <div className="flex-1 flex flex-col items-center justify-center px-8 py-8">
             <div className="w-full max-w-4xl mx-auto">
-              {/* Welcome Message */}
-              <div className="text-center mb-20">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-8">
-                  <span className="text-white text-3xl font-bold">Q</span>
+              {/* Welcome Message - LOGO IN LINE WITH TEXT */}
+              <div className="text-center mb-8">
+                {/* Logo + Title Row - HORIZONTAL LAYOUT */}
+                <div className="flex items-center justify-center gap-3 mb-2">
+                  {/* Smaller Logo - IN LINE */}
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-lg font-bold">Q</span>
+                  </div>
+                  
+                  {/* Title - 24px font, 24px line-height */}
+                  <div className="text-gray-900 text-2xl leading-6">
+                    Hi, I'm Qwen3-Coder.
+                  </div>
                 </div>
-                <div className="text-gray-900 text-2xl leading-relaxed whitespace-pre-line">
-                  Hi, I'm Qwen3-Coder.{'\n'}How can I help you today?
+                
+                {/* Subtitle - 14px font, 24px line-height */}
+                <div className="text-gray-600 text-sm leading-6">
+                  How can I help you today?
                 </div>
               </div>
               
@@ -119,19 +130,17 @@ export default function ChatPage() {
             </div>
           </div>
         ) : (
-          /* Conversation State: Normal layout with messages and bottom input */
+          /* Conversation State: Messages from top, input very close to bottom */
           <>
-            {/* Chat Messages Area */}
-            <div className="flex-1 overflow-hidden">
-              <ChatArea 
-                session={currentSession} 
-                isLoading={isLoading}
-                error={null}
-              />
-            </div>
+            {/* Chat Messages Area - FULL HEIGHT */}
+            <ChatArea 
+              session={currentSession} 
+              isLoading={isLoading}
+              error={null}
+            />
 
-            {/* Chat Input */}
-            <div className="border-t border-gray-200 bg-white">
+            {/* Chat Input - MINIMAL PADDING */}
+            <div className="bg-white pt-2 pb-3 flex-shrink-0">
               <ChatInput 
                 onSendMessage={handleSendMessage}
                 isLoading={isLoading}

@@ -6,13 +6,13 @@ export default function MessageBubble({ message, isLatest = false }: MessageBubb
   const isAssistant = message.role === 'assistant'
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6`}>
       <div className={`max-w-[85%] ${isUser ? 'ml-12' : 'mr-12'}`}>
         {/* Message Content */}
         <div
           className={`
             ${isUser 
-              ? 'bg-blue-600 text-white px-4 py-3 rounded-2xl rounded-br-md shadow-sm' 
+              ? 'bg-blue-50 text-gray-900 px-4 py-3 rounded-2xl rounded-br-md border border-blue-100 shadow-sm' 
               : 'text-gray-900 py-2'
             }
             ${message.isLoading ? 'animate-pulse' : ''}
@@ -28,7 +28,7 @@ export default function MessageBubble({ message, isLatest = false }: MessageBubb
             <div className="leading-relaxed whitespace-pre-wrap break-words">
               {message.content}
               {message.isLoading && isLatest && (
-                <span className="inline-block w-2 h-5 bg-blue-600 ml-1 animate-pulse" />
+                <span className="inline-block w-2 h-5 bg-gray-600 ml-1 animate-pulse" />
               )}
             </div>
           )}

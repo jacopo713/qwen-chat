@@ -5,8 +5,8 @@ import { ChatInputProps } from '@/types/chat'
 
 export default function ChatInput({ 
   onSendMessage, 
-  onDeepThink,
-  onAttachFile,
+  onDeepThink, 
+  onAttachFile, 
   isLoading = false, 
   placeholder = "Type your message..." 
 }: ChatInputProps) {
@@ -15,10 +15,10 @@ export default function ChatInput({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (message.trim() && !isLoading) {
-      onSendMessage(message)
-      setMessage('')
-    }
+    if (!message.trim() || isLoading) return
+    
+    onSendMessage(message.trim())
+    setMessage('')
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -42,19 +42,22 @@ export default function ChatInput({
 
   // Auto-resize textarea
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 140)}px`
+    const textarea = textareaRef.current
+    if (textarea) {
+      textarea.style.height = 'auto'
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`
     }
   }, [message])
 
   return (
-    <div className="px-6 pb-6">
-      <div className="w-full max-w-4xl md:max-w-3xl min-w-[400px] mx-auto">
-        <form onSubmit={handleSubmit}>
-          <div className="rounded-2xl px-5 py-4" style={{ backgroundColor: '#f3f4f6' }}>
-            {/* Input Row */}
-            <div className="mb-3">
+    <div className="w-full">
+      <div className="max-w-4xl md:max-w-3xl min-w-[400px] mx-auto px-6">
+        <form onSubmit={handleSubmit} className="relative">
+          {/* Main Input Container */}
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm focus-within:border-blue-300 focus-within:shadow-md transition-all duration-200">
+            {/* Textarea and Action Buttons */}
+            <div className="flex items-end gap-3 p-4">
+              {/* Text Input */}
               <textarea
                 ref={textareaRef}
                 value={message}
@@ -63,67 +66,38 @@ export default function ChatInput({
                 placeholder={placeholder}
                 disabled={isLoading}
                 className="
-                  w-full bg-transparent border-none outline-none resize-none
-                  text-gray-900 placeholder-gray-500
-                  text-base leading-6 min-h-[24px] max-h-[140px]
-                  disabled:opacity-50
+                  flex-1 resize-none bg-transparent text-gray-900 placeholder-gray-500
+                  focus:outline-none focus:ring-0 border-0 p-0
+                  min-h-[40px] max-h-[120px] leading-6
                 "
-                style={{ fontSize: '16px', lineHeight: '24px' }}
                 rows={1}
               />
-            </div>
-
-            {/* Controls Row */}
-            <div className="flex items-center justify-between">
-              {/* DeepThink Button - Left */}
-              <button
-                type="button"
-                onClick={handleDeepThink}
-                className="
-                  bg-blue-100 hover:bg-blue-200 text-blue-700 
-                  px-3 py-2 rounded-lg transition-colors duration-200
-                  flex items-center gap-2 text-sm font-medium
-                  border border-blue-200 hover:border-blue-300
-                "
-              >
-                <svg 
-                  width="16" 
-                  height="16" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2"
-                >
-                  <path d="M9 12l2 2 4-4"/>
-                  <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.19 0 2.32.23 3.36.64"/>
-                  <path d="M16 4l1.5 1.5L19 4"/>
-                </svg>
-                DeepThink (R1)
-              </button>
 
               {/* Action Buttons - Right */}
               <div className="flex items-center gap-2">
                 {/* Attach File Button */}
-                <button
-                  type="button"
-                  onClick={handleAttachFile}
-                  className="
-                    flex-shrink-0 w-10 h-10 text-gray-500 hover:text-gray-700 hover:bg-gray-100
-                    rounded-lg transition-colors duration-200
-                    flex items-center justify-center
-                  "
-                >
-                  <svg 
-                    width="20" 
-                    height="20" 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="2"
+                {onAttachFile && (
+                  <button
+                    type="button"
+                    onClick={handleAttachFile}
+                    className="
+                      flex-shrink-0 w-10 h-10 text-gray-500 hover:text-gray-700 hover:bg-gray-100
+                      rounded-lg transition-colors duration-200
+                      flex items-center justify-center
+                    "
                   >
-                    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.49"/>
-                  </svg>
-                </button>
+                    <svg 
+                      width="20" 
+                      height="20" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2"
+                    >
+                      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.64 16.2a2 2 0 0 1-2.83-2.83l8.49-8.49"/>
+                    </svg>
+                  </button>
+                )}
 
                 {/* Send Button */}
                 <button
@@ -154,9 +128,37 @@ export default function ChatInput({
                 </button>
               </div>
             </div>
+
+            {/* DeepThink Button */}
+            <div className="px-4 pb-4">
+              <button
+                type="button"
+                onClick={handleDeepThink}
+                className="
+                  flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-600 bg-blue-50 
+                  hover:bg-blue-100 rounded-lg transition-colors duration-200
+                "
+              >
+                <svg 
+                  width="16" 
+                  height="16" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2"
+                >
+                  <path d="M9 12l2 2 4-4"/>
+                  <path d="M21 12c.552 0 1-.448 1-1s-.448-1-1-1-1 .448-1 1 .448 1 1 1z"/>
+                  <path d="M3 12c.552 0 1-.448 1-1s-.448-1-1-1-1 .448-1 1 .448 1 1 1z"/>
+                  <path d="M12 21c.552 0 1-.448 1-1s-.448-1-1-1-1 .448-1 1 .448 1 1 1z"/>
+                  <path d="M12 3c.552 0 1-.448 1-1s-.448-1-1-1-1 .448-1 1 .448 1 1 1z"/>
+                </svg>
+                DeepThink (R1)
+              </button>
+            </div>
           </div>
 
-          {/* AI Generated Notice */}
+          {/* AI Generated Notice - MINIMAL SPACING */}
           <div className="text-center mt-3">
             <p className="text-xs text-gray-400">
               AI-generated, for reference only

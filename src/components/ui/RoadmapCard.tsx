@@ -15,6 +15,8 @@ export default function RoadmapCard({ phase, isActive = false }: RoadmapCardProp
         relative p-6 rounded-lg border transition-all duration-300 hover:shadow-lg
         ${isActive 
           ? 'border-blue-500 bg-blue-50 dark:bg-blue-950 shadow-md' 
+          : phase.status === 'completed'
+          ? 'border-green-200 bg-green-50 dark:bg-green-950 shadow-sm'
           : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
         }
       `}
@@ -28,7 +30,16 @@ export default function RoadmapCard({ phase, isActive = false }: RoadmapCardProp
               Phase {phase.id}: {phase.title}
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Estimated: {phase.estimatedDays} days
+              {phase.status === 'completed' && phase.actualDays ? (
+                <>
+                  ✅ Completed in <span className="font-medium text-green-600">{phase.actualDays} days</span>
+                  {phase.actualDays < phase.estimatedDays && (
+                    <span className="text-green-600"> ({phase.estimatedDays - phase.actualDays} days ahead!)</span>
+                  )}
+                </>
+              ) : (
+                `Estimated: ${phase.estimatedDays} days`
+              )}
             </p>
           </div>
         </div>
@@ -48,8 +59,16 @@ export default function RoadmapCard({ phase, isActive = false }: RoadmapCardProp
         <ul className="space-y-1">
           {phase.features.map((feature, index) => (
             <li key={index} className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-400">
-              <span className="text-green-500 mt-0.5">•</span>
-              {feature}
+              {feature.startsWith('✅') ? (
+                <span className="text-green-500 mt-0.5 font-bold">✅</span>
+              ) : feature.startsWith('🔄') ? (
+                <span className="text-blue-500 mt-0.5">🔄</span>
+              ) : (
+                <span className="text-gray-400 mt-0.5">•</span>
+              )}
+              <span className={feature.startsWith('✅') ? 'text-green-700 dark:text-green-300' : ''}>
+                {feature.replace(/^[✅🔄]\s*/, '')}
+              </span>
             </li>
           ))}
         </ul>
@@ -58,7 +77,12 @@ export default function RoadmapCard({ phase, isActive = false }: RoadmapCardProp
       {/* Tech Stack */}
       <TechStack technologies={phase.techStack} />
 
-      {/* Active Phase Indicator */}
+      {/* Status Indicators */}
+      {phase.status === 'completed' && (
+        <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+          Done
+        </div>
+      )}
       {isActive && (
         <div className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full font-medium">
           Current

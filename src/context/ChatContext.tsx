@@ -45,7 +45,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     saveCurrentSession: saveFirestoreSession,
     setCurrentSession,
     clearError: clearFirestoreError
-  } = useFirestoreChats({ autoSave: true, autoSaveDelay: 2000 })
+  } = useFirestoreChats({ autoSave: false, autoSaveDelay: 2000 })
 
   // Local chat state
   const [localIsLoading, setLocalIsLoading] = useState(false)
@@ -74,7 +74,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     try {
       await createFirestoreSession(title || 'New Chat')
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create new session'
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create session'
       setLocalError(errorMessage)
       throw error
     } finally {
@@ -82,7 +82,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user, createFirestoreSession])
 
-  // Load existing session
+  // Load specific session
   const loadSession = useCallback(async (sessionId: string): Promise<void> => {
     setLocalIsLoading(true)
     setLocalError(null)
@@ -98,15 +98,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [loadFirestoreSession])
 
-  // Switch to existing session from sidebar
+  // Switch to existing session
   const switchToSession = useCallback((sessionId: string) => {
-    const session = sessions.find(s => s.id === sessionId)
-    if (session) {
-      setCurrentSession(session)
-    } else {
-      loadSession(sessionId).catch(console.error)
+    const targetSession = sessions.find(s => s.id === sessionId)
+    if (targetSession) {
+      setCurrentSession(targetSession)
     }
-  }, [sessions, setCurrentSession, loadSession])
+  }, [sessions, setCurrentSession])
 
   // Delete session
   const deleteSession = useCallback(async (sessionId: string): Promise<void> => {
@@ -124,32 +122,41 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }
   }, [deleteFirestoreSession])
 
-  // Send message with AI response
+  // Send message with AI response - NO WELCOME MESSAGE
   const sendMessage = useCallback(async (content: string): Promise<void> => {
     if (!user) {
       setLocalError('You must be signed in to send messages')
       return
     }
 
-    if (!currentSession) {
-      // Create new session if none exists
-      try {
-        const title = ChatService.generateChatTitle(content)
-        await createNewSession(title)
-        // Wait a bit for session to be created
-        setTimeout(() => sendMessage(content), 100)
-        return
-      } catch (error) {
-        setLocalError('Failed to create session for your message')
-        return
-      }
-    }
-
     setLocalIsLoading(true)
     setLocalError(null)
 
     try {
-      // Add user message
+      let sessionToUse = currentSession
+
+      // Create new session immediately if none exists - WITHOUT WELCOME MESSAGE
+      if (!sessionToUse) {
+        const title = ChatService.generateChatTitle(content)
+        const newSessionId = `session-${Date.now()}`
+        
+        // Create session object immediately for UI - EMPTY MESSAGES
+        sessionToUse = {
+          id: newSessionId,
+          title,
+          messages: [], // NO WELCOME MESSAGE
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+
+        // Update local state immediately
+        setCurrentSession(sessionToUse)
+
+        // Create in Firestore asynchronously
+        createFirestoreSession(title).catch(console.error)
+      }
+
+      // Add user message immediately
       const userMessage: Message = {
         id: `user-${Date.now()}`,
         content,
@@ -157,7 +164,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         timestamp: new Date()
       }
 
-      await addMessageToCurrentSession(userMessage)
+      const updatedSession = {
+        ...sessionToUse,
+        messages: [...sessionToUse.messages, userMessage],
+        updatedAt: new Date()
+      }
+
+      // Update local state immediately
+      setCurrentSession(updatedSession)
 
       // Add loading assistant message
       const loadingMessage: Message = {
@@ -168,7 +182,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         isLoading: true
       }
 
-      await addMessageToCurrentSession(loadingMessage)
+      const sessionWithLoading = {
+        ...updatedSession,
+        messages: [...updatedSession.messages, loadingMessage],
+        updatedAt: new Date()
+      }
+
+      // Update local state with loading message
+      setCurrentSession(sessionWithLoading)
 
       // Call AI API
       const response = await fetch('/api/chat', {
@@ -177,7 +198,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: currentSession.messages.concat(userMessage).map(msg => ({
+          messages: updatedSession.messages.map(msg => ({
             role: msg.role,
             content: msg.content
           }))
@@ -196,7 +217,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       let assistantContent = ''
       const decoder = new TextDecoder()
 
-      // Read stream
+      // Read stream and update message content
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
@@ -214,13 +235,13 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
               if (parsed.content) {
                 assistantContent += parsed.content
                 
-                // Update the loading message
+                // Update the loading message with streaming content
                 setCurrentSession(prev => {
                   if (!prev) return prev
                   
                   const updatedMessages = prev.messages.map(msg =>
                     msg.id === loadingMessage.id
-                      ? { ...msg, content: assistantContent, isLoading: false }
+                      ? { ...msg, content: assistantContent, isLoading: true }
                       : msg
                   )
                   
@@ -238,42 +259,44 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         }
       }
 
-      // Final update to ensure message is complete
-      setCurrentSession(prev => {
-        if (!prev) return prev
-        
-        const updatedMessages = prev.messages.map(msg =>
+      // Final update - remove loading state
+      const finalSession = {
+        ...sessionWithLoading,
+        messages: sessionWithLoading.messages.map(msg =>
           msg.id === loadingMessage.id
             ? { ...msg, content: assistantContent, isLoading: false }
             : msg
-        )
-        
-        return {
-          ...prev,
-          messages: updatedMessages,
-          updatedAt: new Date()
-        }
-      })
+        ),
+        updatedAt: new Date()
+      }
+
+      setCurrentSession(finalSession)
+
+      // MANUAL SAVE after streaming is complete
+      try {
+        await ChatService.saveChatSession(finalSession.id, finalSession, user.uid)
+      } catch (saveError) {
+        console.error('Failed to save session after streaming:', saveError)
+        // Don't throw - UI should still work even if save fails
+      }
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to send message'
       setLocalError(errorMessage)
       
       // Remove loading message on error
-      if (currentSession) {
-        setCurrentSession(prev => {
-          if (!prev) return prev
-          return {
-            ...prev,
-            messages: prev.messages.filter(msg => !msg.isLoading),
-            updatedAt: new Date()
-          }
-        })
-      }
+      setCurrentSession(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          messages: prev.messages.filter(msg => !msg.isLoading),
+          updatedAt: new Date()
+        }
+      })
     } finally {
       setLocalIsLoading(false)
     }
-  }, [user, currentSession, createNewSession, addMessageToCurrentSession, setCurrentSession])
+  }, [user, currentSession, createFirestoreSession, setCurrentSession])
 
   // Add message directly (for programmatic use)
   const addMessage = useCallback(async (message: Message): Promise<void> => {
@@ -351,12 +374,21 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setCurrentSession(null)
   }, [setCurrentSession])
 
-  // Auto-create first session when user signs in and has no sessions
+  // Auto-create first session when user signs in and has no sessions - EMPTY SESSION
   useEffect(() => {
     if (user && sessions.length === 0 && !currentSession && !isLoading) {
-      createNewSession().catch(console.error)
+      // Create initial empty session
+      const emptySession: ChatSession = {
+        id: `empty-${Date.now()}`,
+        title: 'New Chat',
+        messages: [], // NO WELCOME MESSAGE
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+      
+      setCurrentSession(emptySession)
     }
-  }, [user, sessions.length, currentSession, isLoading, createNewSession])
+  }, [user, sessions.length, currentSession, isLoading, setCurrentSession])
 
   const value: ChatContextType = {
     // State
