@@ -4,6 +4,10 @@ const nextConfig = {
     QWEN_API_KEY: process.env.QWEN_API_KEY,
     QWEN_API_URL: process.env.QWEN_API_URL,
   },
+  transpilePackages: ['date-fns'],
+  experimental: {
+    esmExternals: 'loose'
+  }
 }
 
 module.exports = nextConfig

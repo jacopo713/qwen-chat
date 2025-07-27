@@ -7,12 +7,12 @@ import TypingIndicator from './TypingIndicator'
 
 interface ChatAreaProps {
   session: ChatSession | null
-  isLoading: boolean
+  isLoading?: boolean
   error?: string | null
   onClearError?: () => void
 }
 
-export default function ChatArea({ session, isLoading, error, onClearError }: ChatAreaProps) {
+export default function ChatArea({ session, isLoading = false, error, onClearError }: ChatAreaProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom when new messages arrive
@@ -48,8 +48,8 @@ export default function ChatArea({ session, isLoading, error, onClearError }: Ch
     )
   }
 
-  // Skip the initial welcome message in conversation view
-  const displayMessages = session.messages.length > 1 ? session.messages.slice(1) : []
+  // Display all messages, including both user and assistant messages
+  const displayMessages = session.messages || []
 
   return (
     <div className="flex-1 flex flex-col bg-white">
@@ -75,35 +75,19 @@ export default function ChatArea({ session, isLoading, error, onClearError }: Ch
         </div>
       )}
 
-      {/* Messages Area - Now takes full available space */}
+      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto bg-white">
         <div className="max-w-4xl md:max-w-3xl min-w-[400px] mx-auto p-6">
-          {displayMessages.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <span className="text-blue-600 text-2xl">💬</span>
-              </div>
-              <h3 className="text-xl font-medium text-gray-900 mb-3">
-                Conversation started
-              </h3>
-              <p className="text-gray-500 text-lg">
-                Your messages will appear here
-              </p>
-            </div>
-          ) : (
-            <>
-              {displayMessages.map((message, index) => (
-                <MessageBubble
-                  key={message.id}
-                  message={message}
-                  isLatest={index === displayMessages.length - 1}
-                />
-              ))}
-              
-              {/* Typing Indicator - show only when loading and no partial content */}
-              <TypingIndicator isVisible={isLoading && !displayMessages[displayMessages.length - 1]?.content} />
-            </>
-          )}
+          {displayMessages.map((message, index) => (
+            <MessageBubble
+              key={message.id}
+              message={message}
+              isLatest={index === displayMessages.length - 1}
+            />
+          ))}
+          
+          {/* Typing Indicator */}
+          <TypingIndicator isVisible={isLoading} />
           
           {/* Auto-scroll anchor */}
           <div ref={messagesEndRef} />

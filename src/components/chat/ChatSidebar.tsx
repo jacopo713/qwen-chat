@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { useChat } from '@/context/ChatContext'
-import { formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns/formatDistanceToNow'
 
 export default function ChatSidebar() {
   const { user, logout } = useAuth()
@@ -144,132 +144,143 @@ export default function ChatSidebar() {
       <div className="flex-1 overflow-y-auto">
         {sessions.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
-            <div className="text-4xl mb-2">💬</div>
+            <div className="w-12 h-12 mx-auto mb-3 text-gray-300">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </div>
             <p className="text-sm">No chat sessions yet</p>
-            <p className="text-xs text-gray-400 mt-1">Start a new conversation</p>
+            <p className="text-xs text-gray-400 mt-1">Start a new conversation to begin</p>
           </div>
         ) : (
-          <div className="p-2">
+          <div className="p-2 space-y-1">
             {sessions.map((session) => (
               <div
                 key={session.id}
-                className={`
-                  group relative mb-2 p-3 rounded-lg border cursor-pointer transition-all duration-200
-                  ${currentSession?.id === session.id
-                    ? 'bg-blue-50 border-blue-200 shadow-sm'
-                    : 'bg-gray-50 border-gray-100 hover:bg-gray-100 hover:border-gray-200'
-                  }
-                `}
+                className={`group relative p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                  currentSession?.id === session.id
+                    ? 'bg-blue-50 border-l-4 border-blue-500'
+                    : 'hover:bg-gray-50'
+                }`}
                 onClick={() => switchToSession(session.id)}
               >
-                {/* Session Title */}
-                <div className="flex items-start justify-between mb-2">
-                  {editingTitleId === session.id ? (
-                    <div className="flex-1 mr-2">
-                      <input
-                        type="text"
-                        value={editingTitle}
-                        onChange={(e) => setEditingTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleSaveTitle(session.id)
-                          if (e.key === 'Escape') handleCancelEdit()
-                        }}
-                        onBlur={() => handleSaveTitle(session.id)}
-                        className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        autoFocus
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
-                  ) : (
-                    <h3 className={`
-                      text-sm font-medium truncate flex-1 mr-2
-                      ${currentSession?.id === session.id ? 'text-blue-900' : 'text-gray-900'}
-                    `}>
-                      {session.title}
-                    </h3>
-                  )}
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleEditTitle(session.id, session.title)
-                      }}
-                      className="p-1 text-gray-400 hover:text-blue-600 rounded"
-                      title="Edit title"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setShowDeleteConfirm(session.id)
-                      }}
-                      className="p-1 text-gray-400 hover:text-red-600 rounded"
-                      title="Delete chat"
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3,6 5,6 21,6"/>
-                        <path d="M19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
-                      </svg>
-                    </button>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    {editingTitleId === session.id ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="text"
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleSaveTitle(session.id)
+                            } else if (e.key === 'Escape') {
+                              handleCancelEdit()
+                            }
+                          }}
+                          className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          autoFocus
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleSaveTitle(session.id)
+                          }}
+                          className="p-1 text-green-600 hover:bg-green-50 rounded"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="20,6 9,17 4,12"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleCancelEdit()
+                          }}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <h3 className="text-sm font-medium text-gray-900 truncate mb-1">
+                          {session.title}
+                        </h3>
+                        <p className="text-xs text-gray-500 line-clamp-2">
+                          {getLastMessage(session)}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {formatLastActivity(session.updatedAt)}
+                        </p>
+                      </>
+                    )}
                   </div>
+
+                  {editingTitleId !== session.id && (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditTitle(session.id, session.title)
+                        }}
+                        className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                        title="Edit title"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowDeleteConfirm(session.id)
+                        }}
+                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                        title="Delete chat"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <polyline points="3,6 5,6 21,6"/>
+                          <path d="M19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
+                        </svg>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                {/* Last Message Preview */}
-                <p className={`
-                  text-xs mb-2 line-clamp-2
-                  ${currentSession?.id === session.id ? 'text-blue-700' : 'text-gray-500'}
-                `}>
-                  {getLastMessage(session)}
-                </p>
-
-                {/* Timestamp and Message Count */}
-                <div className="flex items-center justify-between">
-                  <span className={`
-                    text-xs
-                    ${currentSession?.id === session.id ? 'text-blue-600' : 'text-gray-400'}
-                  `}>
-                    {formatLastActivity(session.updatedAt)}
-                  </span>
-                  <span className={`
-                    text-xs px-2 py-1 rounded-full
-                    ${currentSession?.id === session.id 
-                      ? 'bg-blue-200 text-blue-800' 
-                      : 'bg-gray-200 text-gray-600'
-                    }
-                  `}>
-                    {session.messages.length} msg{session.messages.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-
-                {/* Delete Confirmation */}
+                {/* Delete Confirmation Modal */}
                 {showDeleteConfirm === session.id && (
-                  <div className="absolute inset-0 bg-white border border-red-200 rounded-lg p-3 z-10">
-                    <p className="text-sm text-gray-900 mb-3">Delete this chat?</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteSession(session.id)
-                        }}
-                        className="flex-1 px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
-                      >
-                        Delete
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setShowDeleteConfirm(null)
-                        }}
-                        className="flex-1 px-3 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-                      >
-                        Cancel
-                      </button>
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">Delete Chat</h3>
+                      <p className="text-sm text-gray-600 mb-4">
+                        Are you sure you want to delete this chat? This action cannot be undone.
+                      </p>
+                      <div className="flex justify-end gap-3">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setShowDeleteConfirm(null)
+                          }}
+                          className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteSession(session.id)
+                          }}
+                          className="px-4 py-2 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -280,32 +291,27 @@ export default function ChatSidebar() {
       </div>
 
       {/* User Profile Section */}
-      <div className="p-4 border-t border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-            {getUserInitial()}
+      <div className="border-t border-gray-100 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+              {getUserInitial()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-gray-900 truncate">
+                {getUserDisplayName()}
+              </p>
+              <p className="text-xs text-gray-500 truncate">
+                {user?.email}
+              </p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">
-              {getUserDisplayName()}
-            </p>
-            <p className="text-xs text-gray-500 truncate">
-              {user.email}
-            </p>
-          </div>
-          <button 
+          <button
             onClick={handleLogout}
-            className="text-gray-400 hover:text-red-600 transition-colors"
+            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             title="Sign out"
           >
-            <svg 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2"
-            >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16,17 21,12 16,7"/>
               <line x1="21" y1="12" x2="9" y2="12"/>

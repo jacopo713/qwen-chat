@@ -11,7 +11,17 @@ import ChatInput from '@/components/chat/ChatInput'
 export default function ChatPage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const { currentSession, sendMessage, isLoading, error, clearError } = useChat()
+  const { 
+    currentSession, 
+    sendMessage, 
+    isLoading, 
+    error, 
+    clearError 
+  } = useChat()
+
+  // Check if user has sent any messages (exclude initial assistant message)
+  const userMessageCount = currentSession?.messages.filter(msg => msg.role === 'user').length || 0
+  const isWelcomeState = userMessageCount === 0
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -85,53 +95,51 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Chat Messages Area */}
-        <div className="flex-1 overflow-hidden">
-          {currentSession ? (
-            <ChatArea session={currentSession} />
-          ) : (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center max-w-md mx-auto px-4">
-                <div className="text-6xl mb-6">💬</div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                  Welcome to Qwen Chat
-                </h2>
-                <p className="text-gray-600 mb-6">
-                  Start a new conversation with our AI assistant. Your chat history will be automatically saved and synced across devices.
-                </p>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3 text-left">
-                      <p className="text-sm font-medium text-blue-800">
-                        🔄 Auto-save enabled
-                      </p>
-                      <p className="text-sm text-blue-700">
-                        Your conversations are automatically saved to the cloud
-                      </p>
-                    </div>
-                  </div>
+        {/* Conditional Layout */}
+        {isWelcomeState ? (
+          /* Welcome State: Centered welcome message and input */
+          <div className="flex-1 flex flex-col items-center justify-center px-8 py-16">
+            <div className="w-full max-w-4xl mx-auto">
+              {/* Welcome Message */}
+              <div className="text-center mb-20">
+                <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-8">
+                  <span className="text-white text-3xl font-bold">Q</span>
+                </div>
+                <div className="text-gray-900 text-2xl leading-relaxed whitespace-pre-line">
+                  Hi, I'm Qwen3-Coder.{'\n'}How can I help you today?
                 </div>
               </div>
+              
+              {/* Centered Input */}
+              <ChatInput
+                onSendMessage={handleSendMessage}
+                isLoading={isLoading}
+                placeholder="Ask me anything about coding..."
+              />
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          /* Conversation State: Normal layout with messages and bottom input */
+          <>
+            {/* Chat Messages Area */}
+            <div className="flex-1 overflow-hidden">
+              <ChatArea 
+                session={currentSession} 
+                isLoading={isLoading}
+                error={null}
+              />
+            </div>
 
-        {/* Chat Input */}
-        <div className="border-t border-gray-200 bg-white">
-          <ChatInput 
-            onSendMessage={handleSendMessage}
-            isLoading={isLoading}
-            placeholder={currentSession 
-              ? "Type your message..." 
-              : "Start a new conversation..."
-            }
-          />
-        </div>
+            {/* Chat Input */}
+            <div className="border-t border-gray-200 bg-white">
+              <ChatInput 
+                onSendMessage={handleSendMessage}
+                isLoading={isLoading}
+                placeholder="Type your message..."
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   )
