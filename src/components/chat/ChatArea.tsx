@@ -53,18 +53,6 @@ export default function ChatArea({ session, isLoading, error, onClearError }: Ch
 
   return (
     <div className="flex-1 flex flex-col bg-white">
-      {/* Chat Header */}
-      <div className="border-b border-gray-100 p-6 bg-white">
-        <div className="max-w-4xl md:max-w-3xl min-w-[400px] mx-auto">
-          <h2 className="text-xl font-semibold text-gray-900 truncate">
-            {session.title}
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {session.messages.length - 1} messages • Last active {session.updatedAt.toLocaleString()}
-          </p>
-        </div>
-      </div>
-
       {/* Error Banner */}
       {error && (
         <div className="bg-red-50 border-b border-red-200 p-4">
@@ -87,7 +75,7 @@ export default function ChatArea({ session, isLoading, error, onClearError }: Ch
         </div>
       )}
 
-      {/* Messages Area */}
+      {/* Messages Area - Now takes full available space */}
       <div className="flex-1 overflow-y-auto bg-white">
         <div className="max-w-4xl md:max-w-3xl min-w-[400px] mx-auto p-6">
           {displayMessages.length === 0 ? (
