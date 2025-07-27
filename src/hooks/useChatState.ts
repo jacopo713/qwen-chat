@@ -11,7 +11,7 @@ const welcomeSession: ChatSession = {
   messages: [
     {
       id: '1',
-      content: 'Hello! I\'m Qwen Coder Plus, your AI coding assistant. I can help you with programming questions, code reviews, debugging, and much more. How can I assist you today?',
+      content: 'Hi, I\'m Qwen3-Coder.\nHow can I help you today?',
       role: 'assistant',
       timestamp: new Date()
     }
@@ -220,7 +220,7 @@ export function useChatState() {
       isActive: true,
       messages: [{
         id: Date.now().toString(),
-        content: 'Hello! I\'m Qwen Coder Plus, ready to help you with your coding tasks. What would you like to work on?',
+        content: 'Hi, I\'m Qwen3-Coder.\nHow can I help you today?',
         role: 'assistant',
         timestamp: new Date()
       }]

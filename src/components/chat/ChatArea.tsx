@@ -48,16 +48,19 @@ export default function ChatArea({ session, isLoading, error, onClearError }: Ch
     )
   }
 
+  // Skip the initial welcome message in conversation view
+  const displayMessages = session.messages.length > 1 ? session.messages.slice(1) : []
+
   return (
     <div className="flex-1 flex flex-col bg-white">
       {/* Chat Header */}
-      <div className="border-b border-gray-100 p-4 bg-white">
-        <div className="max-w-3xl mx-auto">
-          <h2 className="text-lg font-semibold text-gray-900 truncate">
+      <div className="border-b border-gray-100 p-6 bg-white">
+        <div className="max-w-4xl md:max-w-3xl min-w-[400px] mx-auto">
+          <h2 className="text-xl font-semibold text-gray-900 truncate">
             {session.title}
           </h2>
-          <p className="text-sm text-gray-500">
-            {session.messages.length} messages • Last active {session.updatedAt.toLocaleString()}
+          <p className="text-sm text-gray-500 mt-1">
+            {session.messages.length - 1} messages • Last active {session.updatedAt.toLocaleString()}
           </p>
         </div>
       </div>
@@ -65,7 +68,7 @@ export default function ChatArea({ session, isLoading, error, onClearError }: Ch
       {/* Error Banner */}
       {error && (
         <div className="bg-red-50 border-b border-red-200 p-4">
-          <div className="max-w-3xl mx-auto flex items-center justify-between">
+          <div className="max-w-4xl md:max-w-3xl min-w-[400px] mx-auto flex items-center justify-between">
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
@@ -86,31 +89,31 @@ export default function ChatArea({ session, isLoading, error, onClearError }: Ch
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto bg-white">
-        <div className="max-w-3xl mx-auto p-4">
-          {session.messages.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-blue-600 text-xl">👋</span>
+        <div className="max-w-4xl md:max-w-3xl min-w-[400px] mx-auto p-6">
+          {displayMessages.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <span className="text-blue-600 text-2xl">💬</span>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Start the conversation
+              <h3 className="text-xl font-medium text-gray-900 mb-3">
+                Conversation started
               </h3>
-              <p className="text-gray-500">
-                Send a message to begin chatting with Qwen AI
+              <p className="text-gray-500 text-lg">
+                Your messages will appear here
               </p>
             </div>
           ) : (
             <>
-              {session.messages.map((message, index) => (
+              {displayMessages.map((message, index) => (
                 <MessageBubble
                   key={message.id}
                   message={message}
-                  isLatest={index === session.messages.length - 1}
+                  isLatest={index === displayMessages.length - 1}
                 />
               ))}
               
               {/* Typing Indicator - show only when loading and no partial content */}
-              <TypingIndicator isVisible={isLoading && !session.messages[session.messages.length - 1]?.content} />
+              <TypingIndicator isVisible={isLoading && !displayMessages[displayMessages.length - 1]?.content} />
             </>
           )}
           

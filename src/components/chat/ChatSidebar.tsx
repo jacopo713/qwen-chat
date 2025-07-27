@@ -46,7 +46,7 @@ export default function ChatSidebar({
   }
 
   return (
-    <div className="w-[280px] flex flex-col h-screen" style={{ backgroundColor: '#f9fbff' }}>
+    <div className="w-[260px] flex flex-col h-screen" style={{ backgroundColor: '#f9fbff' }}>
       {/* Header */}
       <div className="p-4 border-b border-gray-100">
         <button

@@ -24,6 +24,8 @@ export interface ChatState {
 
 export interface ChatInputProps {
   onSendMessage: (content: string) => void
+  onDeepThink?: () => void
+  onAttachFile?: () => void
   isLoading?: boolean
   placeholder?: string
 }
