@@ -2,11 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages } = await request.json()
+    const body = await request.json()
     
-    if (!messages || !Array.isArray(messages)) {
+    // Support both old format (messages) and new format (message + attachedFiles)
+    let messages
+    if (body.messages) {
+      // Old format: { messages: [...] }
+      messages = body.messages
+    } else if (body.message) {
+      // New format: { message: "...", attachedFiles: [...] }
+      messages = [{ role: 'user', content: body.message }]
+    } else {
       return NextResponse.json(
-        { error: 'Messages array is required' },
+        { error: 'Messages or message is required' },
+        { status: 400 }
+      )
+    }
+    
+    if (!Array.isArray(messages)) {
+      return NextResponse.json(
+        { error: 'Messages must be an array' },
         { status: 400 }
       )
     }
@@ -19,6 +34,18 @@ export async function POST(request: NextRequest) {
         { error: 'API configuration missing' },
         { status: 500 }
       )
+    }
+
+    // Add file context to the last message if attachedFiles exist
+    if (body.attachedFiles && body.attachedFiles.length > 0) {
+      const lastMessage = messages[messages.length - 1]
+      if (lastMessage && lastMessage.role === 'user') {
+        const fileContext = body.attachedFiles.map((file: any) => 
+          `[File: ${file.name} - ${file.type} - ${(file.size / 1024 / 1024).toFixed(2)}MB]`
+        ).join('\n')
+        
+        lastMessage.content = `${fileContext}\n\n${lastMessage.content}`
+      }
     }
 
     // Call Qwen API with streaming

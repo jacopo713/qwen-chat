@@ -1,214 +1,226 @@
 'use client'
 
-import React, { createContext, useContext, useCallback, useEffect, useState } from 'react'
-import { ChatSession, Message, ChatState } from '@/types/chat'
-import { useFirestoreChats } from '@/hooks/useFirestoreChats'
-import { useAuth } from './AuthContext'
-import { ChatService } from '@/lib/chatService'
+import React, { createContext, useContext, useReducer, useCallback } from 'react'
+import { ChatState, Message, ChatSession } from '@/types/chat'
+import { FileMetadata } from '@/types/file'
 
-interface ChatContextType extends ChatState {
-  // Session management
-  createNewSession: (title?: string) => Promise<void>
-  loadSession: (sessionId: string) => Promise<void>
-  deleteSession: (sessionId: string) => Promise<void>
-  switchToSession: (sessionId: string) => void
-  
-  // Message management
-  sendMessage: (content: string) => Promise<void>
-  addMessage: (message: Message) => void
-  updateMessage: (messageId: string, updates: Partial<Message>) => void
-  
-  // Session utilities
-  updateSessionTitle: (sessionId: string, title: string) => Promise<void>
-  saveCurrentSession: () => Promise<void>
-  clearCurrentSession: () => void
-  
-  // State management
-  clearError: () => void
-  setIsLoading: (loading: boolean) => void
+// Initial state
+const initialState: ChatState = {
+  currentSession: null,
+  sessions: [],
+  isLoading: false,
+  error: null
 }
 
-const ChatContext = createContext<ChatContextType | undefined>(undefined)
+// Action types
+type ChatAction =
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_CURRENT_SESSION'; payload: ChatSession | null }
+  | { type: 'ADD_MESSAGE'; payload: Message }
+  | { type: 'UPDATE_MESSAGE'; payload: { id: string; content: string; isLoading?: boolean } }
+  | { type: 'ADD_ATTACHED_FILE'; payload: FileMetadata }
+  | { type: 'REMOVE_ATTACHED_FILE'; payload: string }
+  | { type: 'SET_SESSIONS'; payload: ChatSession[] }
+  | { type: 'CLEAR_ERROR' }
 
-export function ChatProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth()
-  const {
-    sessions,
-    currentSession,
-    isLoading: firestoreLoading,
-    error: firestoreError,
-    createNewSession: createFirestoreSession,
-    loadSession: loadFirestoreSession,
-    deleteSession: deleteFirestoreSession,
-    updateSessionTitle: updateFirestoreTitle,
-    addMessageToCurrentSession,
-    saveCurrentSession: saveFirestoreSession,
-    setCurrentSession,
-    clearError: clearFirestoreError
-  } = useFirestoreChats({ autoSave: false, autoSaveDelay: 2000 })
-
-  // Local chat state
-  const [localIsLoading, setLocalIsLoading] = useState(false)
-  const [localError, setLocalError] = useState<string | null>(null)
-
-  // Combined loading and error states
-  const isLoading = firestoreLoading || localIsLoading
-  const error = firestoreError || localError
-
-  // Clear combined errors
-  const clearError = useCallback(() => {
-    clearFirestoreError()
-    setLocalError(null)
-  }, [clearFirestoreError])
-
-  // Create new session with auto-generated title
-  const createNewSession = useCallback(async (title?: string): Promise<void> => {
-    if (!user) {
-      setLocalError('You must be signed in to create a chat session')
-      return
-    }
-
-    setLocalIsLoading(true)
-    setLocalError(null)
-
-    try {
-      await createFirestoreSession(title || 'New Chat')
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create session'
-      setLocalError(errorMessage)
-      throw error
-    } finally {
-      setLocalIsLoading(false)
-    }
-  }, [user, createFirestoreSession])
-
-  // Load specific session
-  const loadSession = useCallback(async (sessionId: string): Promise<void> => {
-    setLocalIsLoading(true)
-    setLocalError(null)
-
-    try {
-      await loadFirestoreSession(sessionId)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load session'
-      setLocalError(errorMessage)
-      throw error
-    } finally {
-      setLocalIsLoading(false)
-    }
-  }, [loadFirestoreSession])
-
-  // Switch to existing session
-  const switchToSession = useCallback((sessionId: string) => {
-    const targetSession = sessions.find(s => s.id === sessionId)
-    if (targetSession) {
-      setCurrentSession(targetSession)
-    }
-  }, [sessions, setCurrentSession])
-
-  // Delete session
-  const deleteSession = useCallback(async (sessionId: string): Promise<void> => {
-    setLocalIsLoading(true)
-    setLocalError(null)
-
-    try {
-      await deleteFirestoreSession(sessionId)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to delete session'
-      setLocalError(errorMessage)
-      throw error
-    } finally {
-      setLocalIsLoading(false)
-    }
-  }, [deleteFirestoreSession])
-
-  // Send message with AI response - NO WELCOME MESSAGE
-  const sendMessage = useCallback(async (content: string): Promise<void> => {
-    if (!user) {
-      setLocalError('You must be signed in to send messages')
-      return
-    }
-
-    setLocalIsLoading(true)
-    setLocalError(null)
-
-    try {
-      let sessionToUse = currentSession
-
-      // Create new session immediately if none exists - WITHOUT WELCOME MESSAGE
-      if (!sessionToUse) {
-        const title = ChatService.generateChatTitle(content)
-        const newSessionId = `session-${Date.now()}`
-        
-        // Create session object immediately for UI - EMPTY MESSAGES
-        sessionToUse = {
-          id: newSessionId,
-          title,
-          messages: [], // NO WELCOME MESSAGE
+// Reducer
+function chatReducer(state: ChatState, action: ChatAction): ChatState {
+  switch (action.type) {
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.payload }
+    
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, isLoading: false }
+    
+    case 'SET_CURRENT_SESSION':
+      return { ...state, currentSession: action.payload }
+    
+    case 'ADD_MESSAGE':
+      if (!state.currentSession) {
+        // Create new session if none exists
+        const newSession: ChatSession = {
+          id: crypto.randomUUID(),
+          title: action.payload.content.slice(0, 50) + '...',
+          messages: [action.payload],
+          attachedFiles: [],
           createdAt: new Date(),
+          updatedAt: new Date(),
+          isActive: true
+        }
+        return {
+          ...state,
+          currentSession: newSession,
+          sessions: [newSession, ...state.sessions]
+        }
+      } else {
+        // Add to existing session
+        const updatedSession = {
+          ...state.currentSession,
+          messages: [...state.currentSession.messages, action.payload],
           updatedAt: new Date()
         }
-
-        // Update local state immediately
-        setCurrentSession(sessionToUse)
-
-        // Create in Firestore asynchronously
-        createFirestoreSession(title).catch(console.error)
+        return {
+          ...state,
+          currentSession: updatedSession,
+          sessions: state.sessions.map(s => 
+            s.id === updatedSession.id ? updatedSession : s
+          )
+        }
+      }
+    
+    case 'UPDATE_MESSAGE':
+      if (!state.currentSession) return state
+      
+      const updatedSession = {
+        ...state.currentSession,
+        messages: state.currentSession.messages.map(msg =>
+          msg.id === action.payload.id 
+            ? { 
+                ...msg, 
+                content: action.payload.content, 
+                isLoading: action.payload.isLoading ?? false 
+              }
+            : msg
+        )
+      }
+      
+      return {
+        ...state,
+        currentSession: updatedSession,
+        sessions: state.sessions.map(s => 
+          s.id === updatedSession.id ? updatedSession : s
+        )
       }
 
-      // Add user message immediately
+    case 'ADD_ATTACHED_FILE':
+      if (!state.currentSession) {
+        // Create new session with attached file
+        const newSession: ChatSession = {
+          id: crypto.randomUUID(),
+          title: `Files: ${action.payload.name}`,
+          messages: [],
+          attachedFiles: [action.payload],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          isActive: true
+        }
+        return {
+          ...state,
+          currentSession: newSession,
+          sessions: [newSession, ...state.sessions]
+        }
+      } else {
+        // Add file to existing session
+        const updatedSession = {
+          ...state.currentSession,
+          attachedFiles: [...state.currentSession.attachedFiles, action.payload],
+          updatedAt: new Date()
+        }
+        return {
+          ...state,
+          currentSession: updatedSession,
+          sessions: state.sessions.map(s => 
+            s.id === updatedSession.id ? updatedSession : s
+          )
+        }
+      }
+
+    case 'REMOVE_ATTACHED_FILE':
+      if (!state.currentSession) return state
+      
+      const sessionWithRemovedFile = {
+        ...state.currentSession,
+        attachedFiles: state.currentSession.attachedFiles.filter(
+          file => file.id !== action.payload
+        ),
+        updatedAt: new Date()
+      }
+      
+      return {
+        ...state,
+        currentSession: sessionWithRemovedFile,
+        sessions: state.sessions.map(s => 
+          s.id === sessionWithRemovedFile.id ? sessionWithRemovedFile : s
+        )
+      }
+    
+    case 'SET_SESSIONS':
+      return { ...state, sessions: action.payload }
+    
+    case 'CLEAR_ERROR':
+      return { ...state, error: null }
+    
+    default:
+      return state
+  }
+}
+
+// Context interface
+interface ChatContextType extends ChatState {
+  sendMessage: (content: string) => Promise<void>
+  addAttachedFile: (file: FileMetadata) => void
+  removeAttachedFile: (fileId: string) => void
+  clearError: () => void
+  createNewSession: () => void
+  selectSession: (sessionId: string) => void
+}
+
+// Create context
+const ChatContext = createContext<ChatContextType | undefined>(undefined)
+
+// Provider component
+export function ChatProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(chatReducer, initialState)
+
+  const sendMessage = useCallback(async (content: string) => {
+    try {
+      dispatch({ type: 'SET_LOADING', payload: true })
+      dispatch({ type: 'SET_ERROR', payload: null })
+
+      // Create user message
       const userMessage: Message = {
-        id: `user-${Date.now()}`,
+        id: crypto.randomUUID(),
         content,
         role: 'user',
         timestamp: new Date()
       }
 
-      const updatedSession = {
-        ...sessionToUse,
-        messages: [...sessionToUse.messages, userMessage],
-        updatedAt: new Date()
-      }
+      // Add user message
+      dispatch({ type: 'ADD_MESSAGE', payload: userMessage })
 
-      // Update local state immediately
-      setCurrentSession(updatedSession)
-
-      // Add loading assistant message
-      const loadingMessage: Message = {
-        id: `assistant-${Date.now()}`,
+      // Create assistant message placeholder
+      const assistantMessageId = crypto.randomUUID()
+      const assistantMessage: Message = {
+        id: assistantMessageId,
         content: '',
         role: 'assistant',
         timestamp: new Date(),
         isLoading: true
       }
 
-      const sessionWithLoading = {
-        ...updatedSession,
-        messages: [...updatedSession.messages, loadingMessage],
-        updatedAt: new Date()
+      dispatch({ type: 'ADD_MESSAGE', payload: assistantMessage })
+
+      // Prepare request with attached files as context
+      const requestBody = {
+        message: content,
+        attachedFiles: state.currentSession?.attachedFiles || []
       }
 
-      // Update local state with loading message
-      setCurrentSession(sessionWithLoading)
-
-      // Call AI API
+      // Call API with streaming
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          messages: updatedSession.messages.map(msg => ({
-            role: msg.role,
-            content: msg.content
-          }))
-        })
+        body: JSON.stringify(requestBody)
       })
 
       if (!response.ok) {
         throw new Error(`API request failed: ${response.status}`)
       }
 
+      // Handle streaming response
       const reader = response.body?.getReader()
       if (!reader) {
         throw new Error('No response body reader available')
@@ -236,186 +248,75 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
                 assistantContent += parsed.content
                 
                 // Update the loading message with streaming content
-                setCurrentSession(prev => {
-                  if (!prev) return prev
-                  
-                  const updatedMessages = prev.messages.map(msg =>
-                    msg.id === loadingMessage.id
-                      ? { ...msg, content: assistantContent, isLoading: true }
-                      : msg
-                  )
-                  
-                  return {
-                    ...prev,
-                    messages: updatedMessages,
-                    updatedAt: new Date()
-                  }
+                dispatch({ 
+                  type: 'UPDATE_MESSAGE', 
+                  payload: { 
+                    id: assistantMessageId, 
+                    content: assistantContent,
+                    isLoading: true
+                  } 
                 })
               }
-            } catch (parseError) {
+            } catch (e) {
               // Skip invalid JSON
+              continue
             }
           }
         }
       }
 
-      // Final update - remove loading state
-      const finalSession = {
-        ...sessionWithLoading,
-        messages: sessionWithLoading.messages.map(msg =>
-          msg.id === loadingMessage.id
-            ? { ...msg, content: assistantContent, isLoading: false }
-            : msg
-        ),
-        updatedAt: new Date()
-      }
-
-      setCurrentSession(finalSession)
-
-      // MANUAL SAVE after streaming is complete
-      try {
-        await ChatService.saveChatSession(finalSession.id, finalSession, user.uid)
-      } catch (saveError) {
-        console.error('Failed to save session after streaming:', saveError)
-        // Don't throw - UI should still work even if save fails
-      }
+      // Final update to mark as complete
+      dispatch({ 
+        type: 'UPDATE_MESSAGE', 
+        payload: { 
+          id: assistantMessageId, 
+          content: assistantContent || 'Sorry, I encountered an error.',
+          isLoading: false
+        } 
+      })
 
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to send message'
-      setLocalError(errorMessage)
-      
-      // Remove loading message on error
-      setCurrentSession(prev => {
-        if (!prev) return prev
-        return {
-          ...prev,
-          messages: prev.messages.filter(msg => !msg.isLoading),
-          updatedAt: new Date()
-        }
+      console.error('Error sending message:', error)
+      dispatch({ 
+        type: 'SET_ERROR', 
+        payload: error instanceof Error ? error.message : 'Failed to send message' 
       })
     } finally {
-      setLocalIsLoading(false)
+      dispatch({ type: 'SET_LOADING', payload: false })
     }
-  }, [user, currentSession, createFirestoreSession, setCurrentSession])
+  }, [state.currentSession])
 
-  // Add message directly (for programmatic use)
-  const addMessage = useCallback(async (message: Message): Promise<void> => {
-    if (!currentSession) {
-      setLocalError('No active session to add message to')
-      return
+  const addAttachedFile = useCallback((file: FileMetadata) => {
+    dispatch({ type: 'ADD_ATTACHED_FILE', payload: file })
+  }, [])
+
+  const removeAttachedFile = useCallback((fileId: string) => {
+    dispatch({ type: 'REMOVE_ATTACHED_FILE', payload: fileId })
+  }, [])
+
+  const clearError = useCallback(() => {
+    dispatch({ type: 'CLEAR_ERROR' })
+  }, [])
+
+  const createNewSession = useCallback(() => {
+    dispatch({ type: 'SET_CURRENT_SESSION', payload: null })
+  }, [])
+
+  const selectSession = useCallback((sessionId: string) => {
+    const session = state.sessions.find(s => s.id === sessionId)
+    if (session) {
+      dispatch({ type: 'SET_CURRENT_SESSION', payload: session })
     }
-
-    try {
-      await addMessageToCurrentSession(message)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to add message'
-      setLocalError(errorMessage)
-    }
-  }, [currentSession, addMessageToCurrentSession])
-
-  // Update specific message
-  const updateMessage = useCallback((messageId: string, updates: Partial<Message>) => {
-    if (!currentSession) return
-
-    setCurrentSession(prev => {
-      if (!prev) return prev
-      
-      const updatedMessages = prev.messages.map(msg =>
-        msg.id === messageId ? { ...msg, ...updates } : msg
-      )
-      
-      return {
-        ...prev,
-        messages: updatedMessages,
-        updatedAt: new Date()
-      }
-    })
-  }, [currentSession, setCurrentSession])
-
-  // Update session title
-  const updateSessionTitle = useCallback(async (sessionId: string, title: string): Promise<void> => {
-    setLocalIsLoading(true)
-    setLocalError(null)
-
-    try {
-      await updateFirestoreTitle(sessionId, title)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update session title'
-      setLocalError(errorMessage)
-      throw error
-    } finally {
-      setLocalIsLoading(false)
-    }
-  }, [updateFirestoreTitle])
-
-  // Save current session manually
-  const saveCurrentSession = useCallback(async (): Promise<void> => {
-    if (!currentSession) {
-      setLocalError('No current session to save')
-      return
-    }
-
-    setLocalIsLoading(true)
-    setLocalError(null)
-
-    try {
-      await saveFirestoreSession()
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to save session'
-      setLocalError(errorMessage)
-      throw error
-    } finally {
-      setLocalIsLoading(false)
-    }
-  }, [currentSession, saveFirestoreSession])
-
-  // Clear current session
-  const clearCurrentSession = useCallback(() => {
-    setCurrentSession(null)
-  }, [setCurrentSession])
-
-  // Auto-create first session when user signs in and has no sessions - EMPTY SESSION
-  useEffect(() => {
-    if (user && sessions.length === 0 && !currentSession && !isLoading) {
-      // Create initial empty session
-      const emptySession: ChatSession = {
-        id: `empty-${Date.now()}`,
-        title: 'New Chat',
-        messages: [], // NO WELCOME MESSAGE
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-      
-      setCurrentSession(emptySession)
-    }
-  }, [user, sessions.length, currentSession, isLoading, setCurrentSession])
+  }, [state.sessions])
 
   const value: ChatContextType = {
-    // State
-    currentSession,
-    sessions,
-    isLoading,
-    error,
-    
-    // Session management
-    createNewSession,
-    loadSession,
-    deleteSession,
-    switchToSession,
-    
-    // Message management
+    ...state,
     sendMessage,
-    addMessage,
-    updateMessage,
-    
-    // Session utilities
-    updateSessionTitle,
-    saveCurrentSession,
-    clearCurrentSession,
-    
-    // State management
+    addAttachedFile,
+    removeAttachedFile,
     clearError,
-    setIsLoading: setLocalIsLoading
+    createNewSession,
+    selectSession
   }
 
   return (
@@ -425,6 +326,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
+// Hook to use chat context
 export function useChat() {
   const context = useContext(ChatContext)
   if (context === undefined) {

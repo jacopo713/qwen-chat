@@ -6,13 +6,13 @@ export interface Message {
   role: 'user' | 'assistant'
   timestamp: Date
   isLoading?: boolean
-  file?: FileMetadata // Add file support
 }
 
 export interface ChatSession {
   id: string
   title: string
   messages: Message[]
+  attachedFiles: FileMetadata[] // Files as context, not messages
   createdAt: Date
   updatedAt: Date
   isActive?: boolean
@@ -30,6 +30,8 @@ export interface ChatInputProps {
   onDeepThink?: () => void
   onAttachFile?: () => void
   onFileUploaded?: (file: FileMetadata) => void
+  attachedFiles?: FileMetadata[]
+  onRemoveFile?: (fileId: string) => void
   isLoading?: boolean
   placeholder?: string
 }
@@ -46,8 +48,16 @@ export interface ApiMessage {
 
 export interface ApiRequest {
   messages: ApiMessage[]
+  attachedFiles?: FileMetadata[] // Include files as context
 }
 
 export interface StreamChunk {
   content: string
+}
+
+// File attachment display component
+export interface AttachedFileProps {
+  file: FileMetadata
+  onRemove: (fileId: string) => void
+  className?: string
 }
